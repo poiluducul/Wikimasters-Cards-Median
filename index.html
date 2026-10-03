@@ -51,12 +51,12 @@ button.rf{border:0;background:var(--n);color:#fff;border-radius:4px;padding:3px 
 <tr class="s"><th><select id="st" aria-label="Tri par titre"><option value="az">A-Z</option><option value="za">Z-A</option></select></th><th></th>
 <th><select id="sd" aria-label="Tri par date"><option value="">défaut</option><option value="rec">Récent</option><option value="anc">Ancien</option></select></th>
 <th><select id="sm" aria-label="Tri par médiane"><option value="">défaut</option><option value="asc">Croissant</option><option value="desc">Décroissant</option></select></th><th></th></tr>
-</thead><tbody id="tb"></tbody></table></div>
+</thead><tbody id="tb"><tr><td class="none" colspan="5">Chargement des cartes…</td></tr></tbody></table></div>
 <div class="st" id="st2"></div>
 </div>
 <script>
 // === CONFIG : adresse de ton Apps Script (déploiement « Application Web », accès : Tout le monde) ===
-const API_URL="https://script.google.com/macros/s/AKfycbzr5aA_5T6h0wA5rpQf2neys4dFNguXmAjpg9gT6BZkRFsTYCv-Q6spTxvDPgXRtAX3Jg/exec";
+const API_URL="https://script.google.com/macros/s/AKfycbyd21g1kNOAjMoq35P7M-Eb_JUKEnSW6CZ8_SVn8SCaeLkyZh3TyEx_S--Soze8Z2ew3w/exec";
 const TTL=10*60*1000, RAR=["L","UR","SR","R","PC","C"];
 const DEMO=[["Achille","L",2649,"2026-09-26","","",""],["Acteur pornographique","UR",495,"2026-10-01","","",""],["Adam Shulman","L",219,"2026-09-27","","",""],
 ["Exemple A (démo)","SR",1200,"2026-09-30","▲ +12 %","1071 (250926)","980 (200926)"],["Exemple B (démo)","R",80,"2026-09-29","▼ -15 %","94 (270926)",""],
