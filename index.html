@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WikiMasters – Suivi des cartes</title>
+<style>
+:root{--g:#D4AF37;--n:#1F2937;--c:#D9D9D9;--r:#D1D5DB;--L:#D4AF37;--UR:#C27803;--SR:#C77D98;--R:#9B8EC4;--PC:#7A8B9E;--C:#6B8E78}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;font:14px Arial,sans-serif;color:#111}
+.w{max-width:1000px;margin:0 auto}
+.ban{background:var(--c);font:12px Roboto,Arial,sans-serif;padding:8px 12px}
+.bar{height:7px;background:var(--g)}
+.ctl{display:flex;flex-wrap:wrap}
+.f{flex:1 1 130px;display:flex;flex-direction:column}
+.f.q{flex:2 1 220px}
+.lb{background:var(--g);font:bold 14px Roboto,Arial,sans-serif;padding:6px 8px;text-align:center}
+.q .lb{text-align:left}
+.f input{border:0;border-left:1px solid #999;border-right:1px solid #999;background:var(--c);height:34px;padding:0 10px;font:14px Arial;width:100%;outline:0}
+.f input:focus{background:#e8e8e8}
+.rar{flex:3 1 330px;display:flex}
+.rb{flex:1;border:0;cursor:pointer;color:#111;padding:0;display:flex;flex-direction:column;font:inherit;background:var(--k)}
+.rb b{padding:6px 0;font:bold 14px Roboto,Arial,sans-serif}
+.rb i{height:34px;line-height:34px;font:normal 18px Arial;opacity:.35}
+.rb[aria-pressed=true] i{opacity:1}
+.rb[aria-pressed=false] i:before{content:"☐"}
+.rb[aria-pressed=true] i:before{content:"☑"}
+.rb:focus-visible{outline:2px solid #111;outline-offset:-3px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th{background:var(--n);color:#fff;padding:7px 10px;text-align:center;white-space:nowrap;border-left:1px solid #374151}
+th:first-child{border-left:0}
+.s th{padding:3px 6px}
+select{background:#374151;color:#fff;border:0;border-radius:3px;padding:3px 4px;font:12px Arial;max-width:100%}
+td{background:var(--r);padding:6px 10px;text-align:center;border-bottom:1px solid #fff}
+td:first-child{text-align:left}
+td.d{font-size:11px}td.m{font-weight:bold}td.a{text-align:right;white-space:nowrap}
+.p{display:inline-block;min-width:34px;padding:2px 6px;border-radius:10px;color:#fff;font:bold 12px Arial}
+.up{color:#166534;font-weight:bold}.dn{color:#991b1b;font-weight:bold}
+.st{padding:8px 12px;font-size:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.st.err{background:#FFC7CE;color:#9C0006}
+button.rf{border:0;background:var(--n);color:#fff;border-radius:4px;padding:3px 10px;cursor:pointer;font:12px Arial}
+.none{padding:22px;text-align:center;background:var(--r)}
+</style></head><body><div class="w">
+<div class="ban" id="ban"></div><div class="bar"></div>
+<div class="ctl">
+ <div class="f q"><div class="lb">Recherche</div><input id="q" type="search" placeholder="Titre de la carte…" autocomplete="off" aria-label="Recherche"></div>
+ <div class="f"><div class="lb" style="text-align:center">Budget Max</div><input id="bm" type="number" min="0" inputmode="numeric" aria-label="Budget maximum"></div>
+ <div class="rar" id="rar"></div>
+</div><div class="bar"></div>
+<div class="tw"><table><thead>
+<tr><th>Titre</th><th>Rareté</th><th>Date</th><th>Médiane</th><th>Tendance</th></tr>
+<tr class="s"><th><select id="st" aria-label="Tri par titre"><option value="az">A-Z</option><option value="za">Z-A</option></select></th><th></th>
+<th><select id="sd" aria-label="Tri par date"><option value="">défaut</option><option value="rec">Récent</option><option value="anc">Ancien</option></select></th>
+<th><select id="sm" aria-label="Tri par médiane"><option value="">défaut</option><option value="asc">Croissant</option><option value="desc">Décroissant</option></select></th><th></th></tr>
+</thead><tbody id="tb"></tbody></table></div>
+<div class="st" id="st2"></div>
+</div>
+<script>
+// === CONFIG : adresse de ton Apps Script (déploiement « Application Web », accès : Tout le monde) ===
+const API_URL="https://script.google.com/macros/s/AKfycbzr5aA_5T6h0wA5rpQf2neys4dFNguXmAjpg9gT6BZkRFsTYCv-Q6spTxvDPgXRtAX3Jg/exec";
+const TTL=10*60*1000, RAR=["L","UR","SR","R","PC","C"];
+const DEMO=[["Achille","L",2649,"2026-09-26","","",""],["Acteur pornographique","UR",495,"2026-10-01","","",""],["Adam Shulman","L",219,"2026-09-27","","",""],
+["Exemple A (démo)","SR",1200,"2026-09-30","▲ +12 %","1071 (250926)","980 (200926)"],["Exemple B (démo)","R",80,"2026-09-29","▼ -15 %","94 (270926)",""],
+["Exemple C (démo)","PC",35,"2026-09-28","= +2 %","34 (260926)",""],["Exemple D (démo)","C",12,"2026-10-01","","",""]];
+const $=id=>document.getElementById(id);
+const norm=s=>String(s??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/œ/g,"oe").replace(/æ/g,"ae").replace(/[^a-z0-9]+/g," ").trim();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const iso=s=>{s=String(s||"");let m=/^(\d{4})-(\d\d)-(\d\d)/.exec(s);if(m)return m[0];m=/^(\d\d)\/(\d\d)\/(\d{4})/.exec(s);return m?`${m[3]}-${m[2]}-${m[1]}`:""};
+const fd=s=>{const i=iso(s);return i?`${i.slice(8)}/${i.slice(5,7)}/${i.slice(0,4)}`:String(s||"")};
+const fn=v=>Number(v).toLocaleString("fr-FR");
+const fa=s=>{const m=/^(\d+(?:[.,]\d+)?)\s*\((\d\d)(\d\d)(\d\d)\)$/.exec(String(s).trim());return m?`${fn(m[1].replace(",","."))} (${m[2]}/${m[3]}/${m[4]})`:esc(s)};
+let data=[],maxA=0,sel=new Set();
+
+function parse(j){
+  let rows=Array.isArray(j)?j:(j.data||j.cartes||j.rows||j.values||[]);
+  if(rows.length&&Array.isArray(rows[0])){const h=rows[0].map(String);rows=rows.slice(1).map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]])))}
+  const g=(r,...ks)=>{for(const k of ks)for(const key in r)if(norm(key)===norm(k))return r[key];return""};
+  const out=rows.map(r=>{
+    const t=String(g(r,"Titre")).trim(),a=[];
+    for(let i=1;i<=30;i++){const v=g(r,"Ancienne "+i,"Ancienne : "+i);if(v!==""&&v!=null)a.push(String(v))}
+    return{t,h:norm(g(r,"Recherche_Clean")||t),r:String(g(r,"Rareté","Rarete")).trim().toUpperCase(),
+      d:g(r,"Date dernière vente","Date derniere vente","Date"),m:parseFloat(String(g(r,"Médiane","Mediane")).replace(/\s/g,"").replace(",",".")),
+      tr:String(g(r,"Tendance")||""),a}}).filter(x=>x.t);
+  return{rows:out,maj:j&&!Array.isArray(j)?(j.maj||j.updated||j.misAJour||""):""};
+}
+function demo(){return DEMO.map(x=>({t:x[0],h:norm(x[0]),r:x[1],m:x[2],d:x[3],tr:x[4],a:[x[5],x[6]].filter(Boolean)}))}
+
+function render(){
+  const q=norm($("q").value),bm=parseFloat($("bm").value),sd=$("sd").value,sm=$("sm").value,st=$("st").value;
+  let l=data.filter(x=>(!q||x.h.includes(q))&&(isNaN(bm)||x.m<=bm)&&(!sel.size||sel.has(x.r)));
+  if(sm)l.sort((a,b)=>sm==="asc"?a.m-b.m:b.m-a.m);
+  else if(sd)l.sort((a,b)=>sd==="rec"?iso(b.d).localeCompare(iso(a.d)):iso(a.d).localeCompare(iso(b.d)));
+  else l.sort((a,b)=>(st==="az"?1:-1)*a.t.localeCompare(b.t,"fr"));
+  $("tb").innerHTML=l.length?l.map(x=>{
+    const c=x.tr.startsWith("▲")?"up":x.tr.startsWith("▼")?"dn":"";
+    let a="";for(let i=0;i<maxA;i++)a+=`<td class="a">${x.a[i]?fa(x.a[i]):""}</td>`;
+    return`<tr><td>${esc(x.t)}</td><td><span class="p" style="background:var(--${RAR.includes(x.r)?x.r:"C"})">${esc(x.r)}</span></td><td class="d">${fd(x.d)}</td><td class="m">${isNaN(x.m)?"":fn(x.m)}</td><td class="${c}">${esc(x.tr)}</td>${a}</tr>`}).join("")
+    :`<tr><td class="none" colspan="${5+maxA}">Aucun résultat trouvé</td></tr>`;
+  $("cnt").textContent=`${l.length} carte${l.length>1?"s":""} sur ${data.length}`;
+}
+function heads(){
+  document.querySelectorAll("thead .xa").forEach(e=>e.remove());
+  const r=document.querySelectorAll("thead tr");
+  for(let i=1;i<=maxA;i++){r[0].insertAdjacentHTML("beforeend",`<th class="xa" style="text-align:right">Ancienne : ${i}</th>`);r[1].insertAdjacentHTML("beforeend",`<th class="xa"></th>`)}
+}
+function set(rows,maj,msg,err){
+  data=rows;maxA=Math.max(0,...rows.map(x=>x.a.length));heads();
+  const last=maj||rows.map(x=>iso(x.d)).sort().pop()||"";
+  $("ban").textContent="Recherchez une carte, consultez son prix médian actuel, comparez avec l'historique, filtrez selon votre budget max et la rareté de la carte."+(last?` Mis à jour le ${fd(last)}.`:"");
+  $("st2").className="st"+(err?" err":"");
+  $("st2").innerHTML=`<span id="cnt"></span><span>${esc(msg||"")} <button class="rf" id="rf">Actualiser</button></span>`;
+  $("rf").onclick=()=>load(true);render();
+}
+async function load(force){
+  try{
+    if(!force){try{const c=JSON.parse(localStorage.getItem("wm_cache")||"null");if(c&&Date.now()-c.t<TTL){set(c.rows,c.maj,"");return}}catch(e){}}
+    const res=await fetch(API_URL,{redirect:"follow"});
+    if(!res.ok)throw new Error("HTTP "+res.status);
+    const p=parse(await res.json());
+    if(!p.rows.length)throw new Error("aucune carte dans la réponse");
+    try{localStorage.setItem("wm_cache",JSON.stringify({t:Date.now(),rows:p.rows,maj:p.maj}))}catch(e){}
+    set(p.rows,p.maj,"");
+  }catch(e){set(demo(),"","Connexion à Google Sheets impossible ("+e.message+") : données de démonstration.",true)}
+}
+$("rar").innerHTML=RAR.map(r=>`<button class="rb" type="button" data-r="${r}" aria-pressed="false" style="--k:var(--${r})"><b>${r}</b><i></i></button>`).join("");
+$("rar").onclick=e=>{const b=e.target.closest(".rb");if(!b)return;const r=b.dataset.r,on=!sel.has(r);on?sel.add(r):sel.delete(r);b.setAttribute("aria-pressed",on);render()};
+["q","bm","sd","sm","st"].forEach(i=>$(i).addEventListener("input",render));
+$("sm").addEventListener("change",()=>{if($("sm").value)$("sd").value=""});
+$("sd").addEventListener("change",()=>{if($("sd").value)$("sm").value=""});
+load(false);
+</script></body></html>
