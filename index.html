@@ -115,11 +115,14 @@ async function load(force){
     if(!force){try{const c=JSON.parse(localStorage.getItem("wm_cache")||"null");if(c&&Date.now()-c.t<TTL){set(c.rows,c.maj,"");return}}catch(e){}}
     const res=await fetch(API_URL,{redirect:"follow"});
     if(!res.ok)throw new Error("HTTP "+res.status);
-    const p=parse(await res.json());
+    let j;try{j=await res.json()}catch(x){throw new Error("la réponse n'est pas du JSON : déploiement non public ou mauvaise URL")}
+    if(j&&j.erreur)throw new Error("Apps Script : "+j.erreur);
+    const p=parse(j);
     if(!p.rows.length)throw new Error("aucune carte dans la réponse");
     try{localStorage.setItem("wm_cache",JSON.stringify({t:Date.now(),rows:p.rows,maj:p.maj}))}catch(e){}
     set(p.rows,p.maj,"");
-  }catch(e){set(demo(),"","Connexion à Google Sheets impossible ("+e.message+") : données de démonstration.",true)}
+  }catch(e){const m=e.message==="Failed to fetch"?"requête bloquée : URL /exec incorrecte ou déploiement non public":e.message;
+    console.error("WikiMasters :",e);set(demo(),"","Connexion à Google Sheets impossible ("+m+") : données de démonstration.",true)}
 }
 $("rar").innerHTML=RAR.map(r=>`<button class="rb" type="button" data-r="${r}" aria-pressed="false" style="--k:var(--${r})"><b>${r}</b><i></i></button>`).join("");
 $("rar").onclick=e=>{const b=e.target.closest(".rb");if(!b)return;const r=b.dataset.r,on=!sel.has(r);on?sel.add(r):sel.delete(r);b.setAttribute("aria-pressed",on);render()};
